@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { idbPromise } from './config/connection';
 import {
   ChakraProvider,
   Grid,
@@ -6,16 +7,39 @@ import {
   Heading,
   Center,
   Button,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
   theme,
 } from '@chakra-ui/react';
 import { ColorModeSwitcher } from './ColorModeSwitcher';
 import { Logo } from './Logo';
-import { connect } from './config/connection'
-import { Search } from './components'
-
-connect()
+import { Search, AddNew, Feed } from './components'
 
 function App() {
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [data, setData] = useState([])
+  const [feedData, setFeedData] = useState([])
+  useEffect(() => {
+    idbPromise('applications', 'get').then(applicationData => {
+      setData(applicationData)
+      setFeedData(applicationData)
+    })
+  }, [])
+
+  const updateFeed = (newFeedData) => {
+    if (newFeedData.length > 0){
+      setFeedData(newFeedData)
+    }
+    else {
+      setFeedData([])
+    }
+  }
   return (
     <ChakraProvider theme={theme}>
       <Grid templateAreas={`"header header"
@@ -33,22 +57,32 @@ function App() {
         </GridItem>
         <GridItem area='search'>
           <Center>
-            <Search />
+            <Search data={data} updateFeed={updateFeed} />
           </Center>
         </GridItem>
         <GridItem area='addnew'>
           <Center>
-            <Button>
+            <Button onClick={onOpen}>
               Add New
             </Button>
           </Center>
         </GridItem>
         <GridItem area='feed'>
           <Center>
-            Feed
+              <Feed displayData={feedData} />
           </Center>
         </GridItem>
       </Grid>
+      <Modal isOpen={isOpen} onClose={onClose} closeOnOverlayClick={false}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Add an Entry</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <AddNew close={onClose} />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </ChakraProvider>
   );
 }

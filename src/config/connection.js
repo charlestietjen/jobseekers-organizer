@@ -1,35 +1,51 @@
-const connect = () => {
-    let db
-    const connection = indexedDB.open("jobseekers-organizer-db", 1);
+const idbPromise = (storeName, method, object) => {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('jobseekers-organizer-db', 1)
+        let db, tx, store
 
-    connection.onerror = (event) => {
-        console.error("Failed to connect to database");
-    }
+        request.onupgradeneeded = e => {
+            const db = request.result
+            db.createObjectStore('applications', { autoIncrement: true })
+        }
 
-    connection.onsuccess = (event) => {
-        return db = event.target.result;
-    }
-    
-    connection.onupgradeneeded = (event) => {
-        db = event.target.result;
+        request.onerror = e => {
+            console.log('Error opening indexedDB')
+        }
 
-        const objectStore = db.createObjectStore("applications", { autoIncrement : true });
+        request.onsuccess = e => {
+            db = request.result
 
-        objectStore.createIndex("title", "title", { unique: false })
-        objectStore.createIndex("companyname", "companyname", { unique: false })
-        objectStore.createIndex("contactname", "contactname", { unique: false })
-        objectStore.createIndex("contactemail", "contactemail", { unique: false })
-        objectStore.createIndex("dateapplied", "dateapplied", { unique: false })
-        objectStore.createIndex("jobboardname", "jobboardname", { unique: false })
-        objectStore.createIndex("coverletter", "coverletter", { unique: false })
+            tx = db.transaction(storeName, 'readwrite')
+            store = tx.objectStore(storeName)
 
-        // objectStore.transaction.oncomplete = (event) => {
-        //     const applicationObjectStore = db.transaction("applications", "readwrite").objectStore("applications")
-        //     dummydata.forEach((application) => {
-        //         applicationObjectStore.add(application)
-        //     })
-        // }
-    }
+            db.onerror = e => {
+                console.log("error: ", e)
+            }
+            
+            switch(method) {
+                case 'put':
+                    store.put(object)
+                    resolve(object)
+                    break
+                case 'get':
+                    const all = store.getAll()
+                    all.onsuccess = () => {
+                        resolve(all.result)
+                    }
+                    break
+                case 'delete':
+                    store.delete(object.id)
+                    break
+                default:
+                    console.log('No valid method')
+                    break
+            }
+
+            tx.oncomplete = () => {
+                db.close()
+            }
+        }
+    })
 }
 
-export { connect }
+export { idbPromise }
